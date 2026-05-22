@@ -1,0 +1,43 @@
+
+body {
+    text-align: center;
+}
+
+span {
+    display: flex;
+    border: 1px solid black;
+}
+
+span > p {
+    margin-right: auto;
+}
+
+#score-this-game {
+    font-size: 100pt;
+    display: flex;
+    margin: auto;
+}
+
+#current-game-info {
+    display: grid;
+}
+
+button {
+    width: 10%;
+    font-size: 13pt;
+}
+
+#buttons {
+    justify-content: space-between;
+    display: flex;
+    margin: 0 5% 0;
+}
+
+#games-score-band {
+    display: flex;
+    justify-content: space-between;
+}
+
+#games-points {
+    border: 1px solid black;
+}

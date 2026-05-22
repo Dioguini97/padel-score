@@ -1,0 +1,25 @@
+<div>
+    <span id="set-game-info">
+        <p>Set: {{set}}</p>
+        <p>Game: {{game}}</p>
+        <p *ngIf="isTiebreak">Tiebreak</p>
+    </span>
+    
+    <span id="current-game-info">
+        <div id="score-this-game">{{pointsToScore(teamAPointsThisGame, teamBPointsThisGame)}}</div>
+        <div id="buttons">
+            <button id="temaA-point-button" (click)="addPointToTeamA()">Team A Point</button>
+            <button id="temaB-point-button" (click)="addPointToTeamB()">Team B Point</button>
+        </div>
+    </span>
+
+    <div id="this-set-games-score-band">{{teamANumberOfGamesThisSet}} - {{teamBNumberOfGamesThisSet}}</div>
+    <div id="games-score-band">
+        <p id="set-games" *ngFor="let i of gamesPerSetTeamA; index as j">{{this.gamesPerSetTeamA[j]}} - {{this.gamesPerSetTeamB[j]}}</p>
+        <p id="games-points" *ngFor="let i of pointsPerGame">{{i}}</p>
+    </div>
+    
+
+    <div id="sets-score-band"></div>
+    <h1>{{message}}</h1>
+</div>
