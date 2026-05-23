@@ -1,34 +1,44 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   addPoint,
   undoLastPoint,
   endGamesOnly,
   getPointsDisplay,
   getAnnouncement,
-} from '../logic/scoring';
-import { useSpeech } from '../hooks/useSpeech';
-import { useKeyboard } from '../hooks/useKeyboard';
+  getPlayers,
+  getCurrentServerName,
+  isTeamAServing,
+  isTeamBServing,
+} from "../logic/scoring";
+import { useSpeech } from "../hooks/useSpeech";
+import { useKeyboard } from "../hooks/useKeyboard";
 
 export default function GameScreen({ initialState, onNewGame }) {
   const [state, setState] = useState(initialState);
   const { speak, voiceEnabled, setVoiceEnabled } = useSpeech();
   const [showSettings, setShowSettings] = useState(false);
-  const [tapKey, setTapKey] = useState(' ');
+  const [tapKey, setTapKey] = useState(" ");
   const prevEvent = useRef(null);
 
-  const pt = state.language === 'pt';
+  const pt = state.language === "pt";
+  const players = [
+    state.teamA[0],
+    state.teamB[0],
+    state.teamA[1],
+    state.teamB[1],
+  ];
 
   // Announce voice on every new event
   useEffect(() => {
     if (!state.lastEvent || state.lastEvent === prevEvent.current) return;
     prevEvent.current = state.lastEvent;
-    const text = getAnnouncement(state.lastEvent, state.names, state.language);
+    const text = getAnnouncement(state.lastEvent, getPlayers(state), state.language);
     if (text) speak(text, state.language);
-  }, [state.lastEvent, state.names, state.language, speak]);
+  }, [state.lastEvent, players, state.language, speak]);
 
   // Announce who serves on mount
   useEffect(() => {
-    const srv = state.names[state.server];
+    const srv = getCurrentServerName(state);
     const text = pt
       ? `Jogo de serviço de ${srv}. Pronto!`
       : `${srv} to serve. Ready!`;
@@ -61,7 +71,7 @@ export default function GameScreen({ initialState, onNewGame }) {
     ? [String(state.tiebreakPoints[0]), String(state.tiebreakPoints[1])]
     : getPointsDisplay(state.points[0], state.points[1]);
 
-  const isFinished = state.phase === 'finished';
+  const isFinished = state.phase === "finished";
   const hasUndo = state.history.length > 0;
 
   // ─── Finished screen ────────────────────────────────────────────────────────
@@ -73,7 +83,7 @@ export default function GameScreen({ initialState, onNewGame }) {
           {state.names[state.winner]}
         </h2>
         <p className="text-gray-400 text-lg mb-2">
-          {pt ? 'vence o jogo!' : 'wins the match!'}
+          {pt ? "vence o jogo!" : "wins the match!"}
         </p>
 
         {/* Set history */}
@@ -81,18 +91,31 @@ export default function GameScreen({ initialState, onNewGame }) {
           <div className="flex gap-4 my-4">
             {state.completedSets.map(([a, b], i) => (
               <div key={i} className="text-2xl font-bold">
-                <span className={state.winner === 0 ? 'text-white' : 'text-gray-500'}>{a}</span>
+                <span
+                  className={
+                    state.winner === 0 ? "text-white" : "text-gray-500"
+                  }
+                >
+                  {a}
+                </span>
                 <span className="text-gray-600 mx-1">–</span>
-                <span className={state.winner === 1 ? 'text-white' : 'text-gray-500'}>{b}</span>
+                <span
+                  className={
+                    state.winner === 1 ? "text-white" : "text-gray-500"
+                  }
+                >
+                  {b}
+                </span>
               </div>
             ))}
           </div>
         )}
 
         {/* Games only result */}
-        {state.format === 'games_only' && (
+        {state.format === "games_only" && (
           <div className="text-2xl font-bold my-4">
-            {state.names[0]}: {state.games[0]} — {state.names[1]}: {state.games[1]}
+            {state.names[0]}: {state.games[0]} — {state.names[1]}:{" "}
+            {state.games[1]}
           </div>
         )}
 
@@ -102,17 +125,17 @@ export default function GameScreen({ initialState, onNewGame }) {
             disabled={!hasUndo}
             className={`py-3 px-6 rounded-2xl font-bold text-lg border transition ${
               hasUndo
-                ? 'border-gray-600 text-gray-300 active:bg-gray-800'
-                : 'border-gray-800 text-gray-700 cursor-not-allowed'
+                ? "border-gray-600 text-gray-300 active:bg-gray-800"
+                : "border-gray-800 text-gray-700 cursor-not-allowed"
             }`}
           >
-            ↩ {pt ? 'Desfazer' : 'Undo'}
+            ↩ {pt ? "Desfazer" : "Undo"}
           </button>
           <button
             onClick={onNewGame}
             className="bg-yellow-400 text-gray-950 font-black py-3 px-6 rounded-2xl text-lg active:bg-yellow-300"
           >
-            {pt ? 'Novo Jogo' : 'New Game'}
+            {pt ? "Novo Jogo" : "New Game"}
           </button>
         </div>
       </div>
@@ -127,21 +150,21 @@ export default function GameScreen({ initialState, onNewGame }) {
           onClick={() => setShowSettings(false)}
           className="text-gray-400 text-left mb-6 text-sm"
         >
-          ← {pt ? 'Voltar' : 'Back'}
+          ← {pt ? "Voltar" : "Back"}
         </button>
         <h2 className="text-xl font-bold mb-6">
-          {pt ? '⚙️ Configurações' : '⚙️ Settings'}
+          {pt ? "⚙️ Configurações" : "⚙️ Settings"}
         </h2>
 
         <div className="mb-6">
           <p className="text-sm text-gray-400 mb-3">
             {pt
-              ? 'Tecla do botão Bluetooth (pressiona a tecla após clicar no campo)'
-              : 'Bluetooth button key (press the key after clicking the field)'}
+              ? "Tecla do botão Bluetooth (pressiona a tecla após clicar no campo)"
+              : "Bluetooth button key (press the key after clicking the field)"}
           </p>
           <input
             className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-center text-xl font-mono"
-            value={tapKey === ' ' ? 'Space' : tapKey}
+            value={tapKey === " " ? "Space" : tapKey}
             readOnly
             onKeyDown={(e) => {
               e.preventDefault();
@@ -149,26 +172,43 @@ export default function GameScreen({ initialState, onNewGame }) {
             }}
           />
           <p className="text-xs text-gray-600 mt-2 text-center">
-            {pt ? `Tecla actual: "${tapKey === ' ' ? 'Space' : tapKey}"` : `Current key: "${tapKey === ' ' ? 'Space' : tapKey}"`}
+            {pt
+              ? `Tecla actual: "${tapKey === " " ? "Space" : tapKey}"`
+              : `Current key: "${tapKey === " " ? "Space" : tapKey}"`}
           </p>
         </div>
 
         <div className="bg-gray-900 rounded-2xl p-4 text-sm text-gray-400 space-y-2">
           <p className="font-semibold text-gray-300 mb-2">
-            {pt ? 'Como usar o botão Bluetooth:' : 'How to use the Bluetooth button:'}
+            {pt
+              ? "Como usar o botão Bluetooth:"
+              : "How to use the Bluetooth button:"}
           </p>
-          <p>1× {pt ? 'toque' : 'tap'} → {state.names[0]}</p>
-          <p>2× {pt ? 'toque' : 'taps'} → {state.names[1]}</p>
-          <p>{pt ? 'Segurar 2s' : 'Hold 2s'} → {pt ? 'Desfazer' : 'Undo'}</p>
+          <p>
+            1× {pt ? "toque" : "tap"} → {`${state.teamA[0]} / ${state.teamA[1]}`}
+          </p>
+          <p>
+            2× {pt ? "toque" : "taps"} → {`${state.teamB[0]} / ${state.teamB[1]}`}
+          </p>
+          <p>
+            {pt ? "Segurar 2s" : "Hold 2s"} → {pt ? "Desfazer" : "Undo"}
+          </p>
         </div>
 
         <div className="mt-6 bg-gray-900 rounded-2xl p-4 text-sm text-gray-400">
           <p className="font-semibold text-gray-300 mb-2">
-            {pt ? 'Botões compatíveis:' : 'Compatible buttons:'}
+            {pt ? "Botões compatíveis:" : "Compatible buttons:"}
           </p>
-          <p>• {pt ? 'Botões de selfie (ligam como teclado)' : 'Selfie buttons (pair as keyboard)'}</p>
-          <p>• {pt ? 'Apresentadores/clickers' : 'Presentation clickers'}</p>
-          <p>• {pt ? 'Qualquer teclado Bluetooth' : 'Any Bluetooth keyboard'}</p>
+          <p>
+            •{" "}
+            {pt
+              ? "Botões de selfie (ligam como teclado)"
+              : "Selfie buttons (pair as keyboard)"}
+          </p>
+          <p>• {pt ? "Apresentadores/clickers" : "Presentation clickers"}</p>
+          <p>
+            • {pt ? "Qualquer teclado Bluetooth" : "Any Bluetooth keyboard"}
+          </p>
         </div>
       </div>
     );
@@ -177,7 +217,6 @@ export default function GameScreen({ initialState, onNewGame }) {
   // ─── Main game screen ────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-gray-950 text-white flex flex-col select-none">
-
       {/* Top bar */}
       <div className="flex items-center justify-between px-3 py-2 bg-gray-900 border-b border-gray-800 shrink-0">
         {/* Voice toggle */}
@@ -186,7 +225,7 @@ export default function GameScreen({ initialState, onNewGame }) {
           onClick={() => setVoiceEnabled(!voiceEnabled)}
           className="text-xl w-9 h-9 flex items-center justify-center"
         >
-          {voiceEnabled ? '🔊' : '🔇'}
+          {voiceEnabled ? "🔊" : "🔇"}
         </button>
 
         {/* Sets + completed set scores */}
@@ -196,7 +235,7 @@ export default function GameScreen({ initialState, onNewGame }) {
               {a}-{b}
             </span>
           ))}
-          {state.format !== 'games_only' && (
+          {state.format !== "games_only" && (
             <span className="text-base font-bold font-mono text-white">
               {state.sets[0]} – {state.sets[1]}
             </span>
@@ -217,7 +256,7 @@ export default function GameScreen({ initialState, onNewGame }) {
             onClick={doUndo}
             disabled={!hasUndo}
             className={`text-xl w-9 h-9 flex items-center justify-center transition ${
-              hasUndo ? 'text-white' : 'text-gray-800'
+              hasUndo ? "text-white" : "text-gray-800"
             }`}
           >
             ↩
@@ -239,12 +278,11 @@ export default function GameScreen({ initialState, onNewGame }) {
 
       {/* Main touch area */}
       <div className="flex flex-1 min-h-0">
-
         {/* Team A — left half */}
         <TouchPanel
-          name={state.names[0]}
+          name={`${state.teamA[0]} & ${state.teamA[1]}`}
           score={dA}
-          isServer={state.server === 0}
+          isServer={isTeamAServing(state)}
           side="left"
           onPoint={() => doAddPoint(0)}
           pt={pt}
@@ -255,9 +293,9 @@ export default function GameScreen({ initialState, onNewGame }) {
 
         {/* Team B — right half */}
         <TouchPanel
-          name={state.names[1]}
+          name={`${state.teamB[0]} & ${state.teamB[1]}`}
           score={dB}
-          isServer={state.server === 1}
+          isServer={isTeamBServing(state)}
           side="right"
           onPoint={() => doAddPoint(1)}
           pt={pt}
@@ -265,14 +303,14 @@ export default function GameScreen({ initialState, onNewGame }) {
       </div>
 
       {/* Games Only end button */}
-      {state.format === 'games_only' && (
+      {state.format === "games_only" && (
         <div className="shrink-0 px-4 pb-3 pt-2 bg-gray-950">
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={doEnd}
             className="w-full py-2 rounded-xl bg-gray-800 text-gray-400 text-sm font-medium active:bg-gray-700"
           >
-            {pt ? 'Terminar Jogo' : 'End Game'}
+            {pt ? "Terminar Jogo" : "End Game"}
           </button>
         </div>
       )}
@@ -280,8 +318,8 @@ export default function GameScreen({ initialState, onNewGame }) {
       {/* Bluetooth hint */}
       <div className="shrink-0 pb-safe text-center py-1 text-xs text-gray-800 bg-gray-950">
         {pt
-          ? `Bluetooth: 1× → ${state.names[0]}  ·  2× → ${state.names[1]}  ·  2s → desfazer`
-          : `Bluetooth: 1× → ${state.names[0]}  ·  2× → ${state.names[1]}  ·  2s → undo`}
+          ? `Bluetooth: 1× → ${state.teamA[0]} / ${state.teamA[1]}  ·  2× → ${state.teamB[0]} / ${state.teamB[1]}  ·  2s → desfazer`
+          : `Bluetooth: 1× → ${state.teamA[0]} / ${state.teamA[1]}  ·  2× → ${state.teamB[0]} / ${state.teamB[1]}  ·  2s → undo`}
       </div>
     </div>
   );
@@ -290,7 +328,7 @@ export default function GameScreen({ initialState, onNewGame }) {
 // ─── Touch panel component ────────────────────────────────────────────────────
 
 function TouchPanel({ name, score, isServer, side, onPoint, pt }) {
-  const isAdv = score === 'ADV';
+  const isAdv = score === "ADV";
 
   // Detect tap vs accidental scroll
   const pointerStart = useRef(null);
@@ -311,32 +349,34 @@ function TouchPanel({ name, score, isServer, side, onPoint, pt }) {
   return (
     <div
       className={`flex-1 flex flex-col items-center justify-center cursor-pointer
-        ${side === 'left' ? 'active:bg-blue-950' : 'active:bg-red-950'} transition-colors`}
+        ${side === "left" ? "active:bg-blue-950" : "active:bg-red-950"} transition-colors`}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
     >
       {/* Server indicator */}
       <div className="flex items-center gap-2 mb-3">
-        {isServer && side === 'left' && <span className="text-yellow-400 text-lg">🎾</span>}
+        {isServer && side === "left" && (
+          <span className="text-yellow-400 text-lg">🎾</span>
+        )}
         <span className="text-sm font-semibold text-gray-400 uppercase tracking-wider truncate max-w-[120px]">
           {name}
         </span>
-        {isServer && side === 'right' && <span className="text-yellow-400 text-lg">🎾</span>}
+        {isServer && side === "right" && (
+          <span className="text-yellow-400 text-lg">🎾</span>
+        )}
       </div>
 
       {/* Score */}
       <div
         className={`font-mono font-black leading-none transition-all ${
-          isAdv
-            ? 'text-5xl text-green-400'
-            : 'text-8xl text-white'
+          isAdv ? "text-5xl text-green-400" : "text-8xl text-white"
         }`}
       >
         {score}
       </div>
 
       <div className="mt-6 text-xs text-gray-800">
-        {pt ? 'toque para ponto' : 'tap for point'}
+        {pt ? "toque para ponto" : "tap for point"}
       </div>
     </div>
   );

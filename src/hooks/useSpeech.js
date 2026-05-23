@@ -10,13 +10,35 @@ export function useSpeech() {
     if (!val) window.speechSynthesis?.cancel();
   }, []);
 
-  const speak = useCallback((text, language = 'pt') => {
+  const speak = useCallback(async (text, language = 'pt') => {
     if (!enabledRef.current || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = language === 'pt' ? 'pt-PT' : 'en-US';
-    u.rate = 1.05;
-    u.pitch = 1.0;
+
+    const getVoicesAsync = () =>
+  new Promise((resolve) => {
+    let voices = window.speechSynthesis.getVoices();
+    if (voices.length) return resolve(voices);
+
+    window.speechSynthesis.onvoiceschanged = () => {
+      voices = window.speechSynthesis.getVoices();
+      resolve(voices);
+    };
+  });
+
+    const voices = await getVoicesAsync();
+
+    const preferred = 
+      voices.find(v => v.lang === u.lang && v.name.includes('Google')) ||
+      voices.find(v => v.lang === u.lang) ||
+      voices[0];
+
+    if (preferred) u.voice = preferred;
+
+    u.rate = 0.95;
+    u.pitch = 0.9;
+    u.volume = 0.8;
     window.speechSynthesis.speak(u);
   }, []);
 

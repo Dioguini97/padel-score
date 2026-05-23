@@ -7,29 +7,36 @@ const FORMATS = [
 ];
 
 export default function SetupScreen({ onStart }) {
-  const [nameA, setNameA] = useState('');
-  const [nameB, setNameB] = useState('');
+  const [nameA1, setNameA1] = useState('');
+  const [nameB1, setNameB1] = useState('');
+  const [nameA2, setNameA2] = useState('');
+  const [nameB2, setNameB2] = useState('');
   const [format, setFormat] = useState('best_of_3');
   const [language, setLanguage] = useState('pt');
-  const [firstServer, setFirstServer] = useState(null);
+  const [server, setFirstServer] = useState(null);
 
   function randomServer() {
-    setFirstServer(Math.random() < 0.5 ? 0 : 1);
-  }
+  setFirstServer(Math.floor(Math.random() * 4));
+}
 
   function handleStart() {
-    if (firstServer === null) return;
+    if (server === null) return;
     onStart({
-      nameA: nameA.trim() || 'Equipa A',
-      nameB: nameB.trim() || 'Equipa B',
+      teamA: [nameA1.trim() || 'A1', nameA2.trim() || 'A2'],
+      teamB: [nameB1.trim() || 'B1', nameB2.trim() || 'B2'],
+      server: server,
       format,
       language,
-      firstServer,
     });
   }
 
-  const resolvedNameA = nameA.trim() || 'Equipa A';
-  const resolvedNameB = nameB.trim() || 'Equipa B';
+  const players = [
+  nameA1 || 'A1',
+  nameB1 || 'B1',
+  nameA2 || 'A2',
+  nameB2 || 'B2',
+];
+
   const pt = language === 'pt';
 
   return (
@@ -69,8 +76,14 @@ export default function SetupScreen({ onStart }) {
             <input
               className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-blue-500"
               placeholder={pt ? 'Ex: Diogo' : 'E.g. John'}
-              value={nameA}
-              onChange={(e) => setNameA(e.target.value)}
+              value={nameA1}
+              onChange={(e) => setNameA1(e.target.value)}
+            />
+            <input
+              className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-blue-500"
+              placeholder={pt ? 'Ex: Diogo' : 'E.g. John'}
+              value={nameA2}
+              onChange={(e) => setNameA2(e.target.value)}
             />
           </div>
           <div>
@@ -80,8 +93,14 @@ export default function SetupScreen({ onStart }) {
             <input
               className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-red-500"
               placeholder={pt ? 'Ex: Pedro' : 'E.g. Mike'}
-              value={nameB}
-              onChange={(e) => setNameB(e.target.value)}
+              value={nameB1}
+              onChange={(e) => setNameB1(e.target.value)}
+            />
+            <input
+              className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white text-base outline-none focus:border-red-500"
+              placeholder={pt ? 'Ex: Pedro' : 'E.g. Mike'}
+              value={nameB2}
+              onChange={(e) => setNameB2(e.target.value)}
             />
           </div>
 
@@ -112,39 +131,65 @@ export default function SetupScreen({ onStart }) {
             <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">
               {pt ? 'Quem serve primeiro?' : 'Who serves first?'}
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
+            <div className="grid grid-cols-3 gap-2 items-center">
+              <div className='flex flex-col gap-2'>
+                <button
                 onClick={() => setFirstServer(0)}
                 className={`py-2 rounded-xl text-xs font-semibold transition truncate ${
-                  firstServer === 0
+                  server === 0
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-900 border border-gray-800 text-gray-300'
                 }`}
               >
-                {resolvedNameA} 🎾
+                {nameA1 || 'A1'} 🎾
               </button>
+              <button
+                onClick={() => setFirstServer(2)}
+                className={`py-2 rounded-xl text-xs font-semibold transition truncate ${
+                  server === 2
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-900 border border-gray-800 text-gray-300'
+                }`}
+              >
+                {nameA2 || 'A2'} 🎾
+              </button>
+              </div>
+              
               <button
                 onClick={randomServer}
                 className="py-2 rounded-xl text-xs bg-gray-800 text-gray-300 border border-gray-700"
               >
                 🎲 {pt ? 'Aleatório' : 'Random'}
               </button>
-              <button
+              <div className='flex flex-col gap-2'>
+                <button
                 onClick={() => setFirstServer(1)}
                 className={`py-2 rounded-xl text-xs font-semibold transition truncate ${
-                  firstServer === 1
+                  server === 1
                     ? 'bg-red-500 text-white'
                     : 'bg-gray-900 border border-gray-800 text-gray-300'
                 }`}
               >
-                🎾 {resolvedNameB}
+                🎾 {nameB1 || 'B1'}
               </button>
+              <button
+                onClick={() => setFirstServer(3)}
+                className={`py-2 rounded-xl text-xs font-semibold transition truncate ${
+                  server === 3
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-900 border border-gray-800 text-gray-300'
+                }`}
+              >
+                🎾 {nameB2 || 'B2'}
+              </button>
+              </div>
+              
             </div>
-            {firstServer !== null && (
+            {server !== null && (
               <p className="text-xs text-center text-gray-500 mt-2">
                 {pt
-                  ? `${names(firstServer, resolvedNameA, resolvedNameB)} serve primeiro`
-                  : `${names(firstServer, resolvedNameA, resolvedNameB)} serves first`}
+                  ? `${players[server]} serve primeiro`
+                  : `${players[server]} serves first`}
               </p>
             )}
           </div>
@@ -152,9 +197,9 @@ export default function SetupScreen({ onStart }) {
           {/* Start */}
           <button
             onClick={handleStart}
-            disabled={firstServer === null}
+            disabled={server === null}
             className={`w-full py-4 rounded-2xl text-lg font-black transition ${
-              firstServer !== null
+              server !== null
                 ? 'bg-yellow-400 text-gray-950 active:bg-yellow-300'
                 : 'bg-gray-800 text-gray-600 cursor-not-allowed'
             }`}

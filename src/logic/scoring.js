@@ -1,6 +1,6 @@
 // ─── Scoring logic for padel ─────────────────────────────────────────────────
 
-const POINT_LABELS = ['0', '15', '30', '40'];
+const POINT_LABELS = ["0", "15", "30", "40"];
 
 // ─── Display helpers ──────────────────────────────────────────────────────────
 
@@ -8,11 +8,11 @@ export function getPointsDisplay(pA, pB) {
   // Both below 40: show normal labels
   if (pA < 3 && pB < 3) return [POINT_LABELS[pA], POINT_LABELS[pB]];
   // One side at 40, other below
-  if (pA >= 3 && pB < 3) return ['40', POINT_LABELS[pB]];
-  if (pB >= 3 && pA < 3) return [POINT_LABELS[pA], '40'];
+  if (pA >= 3 && pB < 3) return ["40", POINT_LABELS[pB]];
+  if (pB >= 3 && pA < 3) return [POINT_LABELS[pA], "40"];
   // Both >= 3: deuce zone
-  if (pA === pB) return ['40', '40']; // deuce
-  return pA > pB ? ['ADV', '40'] : ['40', 'ADV'];
+  if (pA === pB) return ["40", "40"]; // deuce
+  return pA > pB ? ["ADV", "40"] : ["40", "ADV"];
 }
 
 // ─── Win condition helpers ────────────────────────────────────────────────────
@@ -42,27 +42,49 @@ function tiebreakWinner(tbA, tbB) {
 
 // Tiebreak serve: first server serves 1 point, then alternate every 2
 function tiebreakServer(firstServer, totalPoints) {
-  const block = Math.floor((totalPoints + 1) / 2);
-  return block % 2 === 0 ? firstServer : 1 - firstServer;
+
+  if (totalPoints === 0) return firstServer;
+
+  const blockIndex = Math.floor((totalPoints + 1) / 2);
+
+  return (firstServer + blockIndex) % 4;
+  //const sequence = [0, 1, 2, 3];
+  //const startIndex = sequence.indexOf(server);
+  //return sequence[(startIndex + totalPoints) % 4];
+  //const block = Math.floor((totalPoints + 1) / 2);
+  //return block % 2 === 0 ? firstServer : 1 - firstServer;
 }
 
 // ─── State factory ────────────────────────────────────────────────────────────
 
-export function createInitialState({ nameA, nameB, format, language, firstServer }) {
+export function createInitialState({
+  teamA,
+  teamB,
+  format,
+  language,
+  server,
+}) {
   return {
-    names: [nameA || 'Equipa A', nameB || 'Equipa B'],
-    format,   // 'best_of_3' | 'one_set' | 'games_only'
+    teamA,
+    teamB,
+    names: [
+      teamA?.[0] || "A1",
+      teamB?.[0] || "B1",
+      teamA?.[1] || "A2",
+      teamB?.[1] || "B2",
+    ],
+    format, // 'best_of_3' | 'one_set' | 'games_only'
     language, // 'pt' | 'en'
-    phase: 'playing',
+    phase: "playing",
     points: [0, 0],
     games: [0, 0],
     sets: [0, 0],
-    completedSets: [],   // [[gA, gB], ...]
-    server: firstServer, // 0 or 1
-    firstServerOfSet: firstServer,
+    completedSets: [], // [[gA, gB], ...]
+    server, // 0 or 1
+    firstServerOfSet: server,
     isTiebreak: false,
     tiebreakPoints: [0, 0],
-    tbFirstServer: firstServer,
+    tbFirstServer: server,
     winner: null,
     lastEvent: null,
     history: [],
@@ -72,7 +94,7 @@ export function createInitialState({ nameA, nameB, format, language, firstServer
 // ─── Core actions ─────────────────────────────────────────────────────────────
 
 export function addPoint(state, team) {
-  if (state.phase !== 'playing') return state;
+  if (state.phase !== "playing") return state;
   // Snapshot for undo (no nested history)
   const snap = { ...state, history: [] };
   const next = state.isTiebreak
@@ -92,9 +114,14 @@ export function endGamesOnly(state) {
   const winner = gA > gB ? 0 : gA < gB ? 1 : 0; // ties go to A for simplicity
   return {
     ...state,
-    phase: 'finished',
+    phase: "finished",
     winner,
-    lastEvent: { type: 'match', winner, sets: state.games, completedSets: state.completedSets },
+    lastEvent: {
+      type: "match",
+      winner,
+      sets: state.games,
+      completedSets: state.completedSets,
+    },
   };
 }
 
@@ -105,7 +132,7 @@ function processNormalPoint(state, team) {
   pts[team]++;
   const winner = gameWinner(pts[0], pts[1]);
   if (winner === null) {
-    return { ...state, points: pts, lastEvent: { type: 'point', points: pts } };
+    return { ...state, points: pts, lastEvent: { type: "point", points: pts } };
   }
   return processGameWin({ ...state, points: [0, 0] }, winner);
 }
@@ -113,10 +140,10 @@ function processNormalPoint(state, team) {
 function processGameWin(state, gWinner) {
   const games = [...state.games];
   games[gWinner]++;
-  const newServer = 1 - state.server;
+  const newServer = nextServer(state.server);
 
   // Tiebreak trigger at 6-6
-  if (games[0] === 6 && games[1] === 6 && state.format !== 'games_only') {
+  if (games[0] === 6 && games[1] === 6 && state.format !== "games_only") {
     return {
       ...state,
       games,
@@ -124,12 +151,13 @@ function processGameWin(state, gWinner) {
       isTiebreak: true,
       tiebreakPoints: [0, 0],
       tbFirstServer: newServer,
-      lastEvent: { type: 'tiebreak_start', games, server: newServer },
+      lastEvent: { type: "tiebreak_start", games, server: newServer },
     };
   }
 
   // Set winner?
-  const sw = state.format !== 'games_only' ? setGameWinner(games[0], games[1]) : null;
+  const sw =
+    state.format !== "games_only" ? setGameWinner(games[0], games[1]) : null;
   if (sw !== null) {
     return processSetWin({ ...state, games }, sw, games, newServer);
   }
@@ -139,7 +167,7 @@ function processGameWin(state, gWinner) {
     points: [0, 0],
     games,
     server: newServer,
-    lastEvent: { type: 'game', winner: gWinner, games, server: newServer },
+    lastEvent: { type: "game", winner: gWinner, games, server: newServer },
   };
 }
 
@@ -147,7 +175,7 @@ function processSetWin(state, sw, games, newServer) {
   const sets = [...state.sets];
   sets[sw]++;
   const completedSets = [...state.completedSets, [...games]];
-  const neededSets = state.format === 'best_of_3' ? 2 : 1;
+  const neededSets = state.format === "best_of_3" ? 2 : 1;
 
   if (sets[sw] >= neededSets) {
     return {
@@ -156,9 +184,9 @@ function processSetWin(state, sw, games, newServer) {
       games: [0, 0],
       sets,
       completedSets,
-      phase: 'finished',
+      phase: "finished",
       winner: sw,
-      lastEvent: { type: 'match', winner: sw, sets, completedSets },
+      lastEvent: { type: "match", winner: sw, sets, completedSets },
     };
   }
 
@@ -171,7 +199,7 @@ function processSetWin(state, sw, games, newServer) {
     server: newServer,
     firstServerOfSet: newServer,
     isTiebreak: false,
-    lastEvent: { type: 'set', winner: sw, sets, games, server: newServer },
+    lastEvent: { type: "set", winner: sw, sets, games, server: newServer },
   };
 }
 
@@ -187,7 +215,11 @@ function processTiebreakPoint(state, team) {
       ...state,
       tiebreakPoints: tb,
       server: newServer,
-      lastEvent: { type: 'tiebreak_point', tiebreakPoints: tb, server: newServer },
+      lastEvent: {
+        type: "tiebreak_point",
+        tiebreakPoints: tb,
+        server: newServer,
+      },
     };
   }
 
@@ -206,49 +238,74 @@ function processTiebreakPoint(state, team) {
 
 export function getAnnouncement(event, names, language) {
   if (!event) return null;
-  const pt = language === 'pt';
-  const [nA, nB] = names;
+  const pt = language === "pt";
+  const [nA, nB, nAA, nBB] = names;
   const serverName = (s) => names[s];
+  const teamA = `${names[0]} & ${names[2]}`;
+  const teamB = `${names[1]} & ${names[3]}`;   
 
   switch (event.type) {
-    case 'point': {
+    case "point": {
       const [dA, dB] = getPointsDisplay(event.points[0], event.points[1]);
-      if (dA === '40' && dB === '40') return pt ? 'Iguais' : 'Deuce';
-      if (dA === 'ADV') return pt ? `Vantagem ${nA}` : `Advantage ${nA}`;
-      if (dB === 'ADV') return pt ? `Vantagem ${nB}` : `Advantage ${nB}`;
+      if (dA === "40" && dB === "40") return pt ? "Iguais" : "Deuce";
+      if (dA === "ADV") return pt ? `Vantagem ${nA} & ${nAA}` : `Advantage ${nA} & ${nAA}`;
+      if (dB === "ADV") return pt ? `Vantagem ${nB} & ${nBB}` : `Advantage ${nB} & ${nBB}`;
       return pt ? `${dA} a ${dB}` : `${dA}, ${dB}`;
     }
-    case 'game': {
+    case "game": {
       const [gA, gB] = event.games;
       const srv = serverName(event.server);
       return pt
         ? `Jogo! ${gA} a ${gB}. Serviço de ${srv}`
         : `Game! ${gA} ${gB}. ${srv} to serve`;
     }
-    case 'tiebreak_start': {
+    case "tiebreak_start": {
       const srv = serverName(event.server);
       return pt ? `Tie-break! Serviço de ${srv}` : `Tiebreak! ${srv} to serve`;
     }
-    case 'tiebreak_point': {
+    case "tiebreak_point": {
       const [tbA, tbB] = event.tiebreakPoints;
       const srv = serverName(event.server);
-      return pt ? `${tbA} a ${tbB}. ${srv}` : `${tbA} ${tbB}. ${srv}`;
+      return pt ? `${tbA} a ${tbB}. Serviço de ${srv}` : `${tbA} ${tbB}. ${srv} to serve`;
     }
-    case 'set': {
+    case "set": {
       const [sA, sB] = event.sets;
       const [gA, gB] = event.games;
-      const srv = serverName(event.server);
+      const srv = serverName(event.server);  
+      const winner = event.winner === 0 ? teamA : teamB; 
       return pt
-        ? `Set para ${names[event.winner]}! ${gA} a ${gB}. ${sA} sets a ${sB}. Serviço de ${srv}`
-        : `Set to ${names[event.winner]}! ${gA} ${gB}. ${sA} sets to ${sB}. ${srv} to serve`;
+        ? `Set para ${winner}! ${gA} a ${gB}. ${sA} sets a ${sB}. Serviço de ${srv}`
+        : `Set to ${winner}! ${gA} ${gB}. ${sA} sets to ${sB}. ${srv} to serve`;
     }
-    case 'match': {
+    case "match": {
       const [sA, sB] = event.sets;
+      const winner = event.winner === 0 ? teamA : teamB; 
       return pt
-        ? `Jogo! ${names[event.winner]} vence! ${sA} a ${sB}`
-        : `Game! ${names[event.winner]} wins! ${sA} to ${sB}`;
+        ? `Jogo! ${winner} vence! ${sA} a ${sB}`
+        : `Game! ${winner} wins! ${sA} to ${sB}`;
     }
     default:
       return null;
   }
+}
+
+export function getPlayers(state) {
+  return [state.teamA[0], state.teamB[0], state.teamA[1], state.teamB[1]];
+}
+
+export function getCurrentServerName(state) {
+  const players = getPlayers(state);
+  return players[state.server];
+}
+
+export function isTeamAServing(state) {
+  return state.server === 0 || state.server === 2;
+}
+
+export function isTeamBServing(state) {
+  return state.server === 1 || state.server === 3;
+}
+
+export function nextServer(server) {
+  return (server + 1) % 4;
 }
