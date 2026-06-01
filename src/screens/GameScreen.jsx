@@ -12,6 +12,7 @@ import {
 } from "../logic/scoring";
 import { useSpeech } from "../hooks/useSpeech";
 import { useKeyboard } from "../hooks/useKeyboard";
+import { saveMatch } from "../services/matchStorage";
 
 export default function GameScreen({ initialState, onNewGame }) {
   const [state, setState] = useState(initialState);
@@ -32,7 +33,11 @@ export default function GameScreen({ initialState, onNewGame }) {
   useEffect(() => {
     if (!state.lastEvent || state.lastEvent === prevEvent.current) return;
     prevEvent.current = state.lastEvent;
-    const text = getAnnouncement(state.lastEvent, getPlayers(state), state.language);
+    const text = getAnnouncement(
+      state.lastEvent,
+      getPlayers(state),
+      state.language,
+    );
     if (text) speak(text, state.language);
   }, [state.lastEvent, players, state.language, speak]);
 
@@ -46,6 +51,12 @@ export default function GameScreen({ initialState, onNewGame }) {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (state.phase === "finished") {
+      saveMatch(state);
+    }
+  }, [state.phase]);
 
   const doAddPoint = useCallback((team) => {
     setState((s) => addPoint(s, team));
@@ -185,10 +196,12 @@ export default function GameScreen({ initialState, onNewGame }) {
               : "How to use the Bluetooth button:"}
           </p>
           <p>
-            1× {pt ? "toque" : "tap"} → {`${state.teamA[0]} / ${state.teamA[1]}`}
+            1× {pt ? "toque" : "tap"} →{" "}
+            {`${state.teamA[0]} / ${state.teamA[1]}`}
           </p>
           <p>
-            2× {pt ? "toque" : "taps"} → {`${state.teamB[0]} / ${state.teamB[1]}`}
+            2× {pt ? "toque" : "taps"} →{" "}
+            {`${state.teamB[0]} / ${state.teamB[1]}`}
           </p>
           <p>
             {pt ? "Segurar 2s" : "Hold 2s"} → {pt ? "Desfazer" : "Undo"}

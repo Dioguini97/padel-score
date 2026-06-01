@@ -42,7 +42,6 @@ function tiebreakWinner(tbA, tbB) {
 
 // Tiebreak serve: first server serves 1 point, then alternate every 2
 function tiebreakServer(firstServer, totalPoints) {
-
   if (totalPoints === 0) return firstServer;
 
   const blockIndex = Math.floor((totalPoints + 1) / 2);
@@ -57,16 +56,13 @@ function tiebreakServer(firstServer, totalPoints) {
 
 // ─── State factory ────────────────────────────────────────────────────────────
 
-export function createInitialState({
-  teamA,
-  teamB,
-  format,
-  language,
-  server,
-}) {
+export function createInitialState({ teamA, teamB, format, language, server }) {
   return {
     teamA,
     teamB,
+    matchId: crypto.randomUUID(),
+    startedAt: Date.now(),
+    events: [],
     names: [
       teamA?.[0] || "A1",
       teamB?.[0] || "B1",
@@ -88,6 +84,27 @@ export function createInitialState({
     winner: null,
     lastEvent: null,
     history: [],
+  };
+}
+
+function addEvent(state, event) {
+  return {
+    ...state,
+    events: [
+      ...state.events,
+      {
+        timestamp: Date.now(),
+        ...event,
+        server: state.server,
+        score: {
+          points: [...state.points],
+          games: [...state.games],
+          sets: [...state.sets],
+          isTiebreak: state.isTiebreak,
+          tiebreakPoints: [...state.tiebreakPoints],
+        },
+      },
+    ],
   };
 }
 
@@ -132,7 +149,16 @@ function processNormalPoint(state, team) {
   pts[team]++;
   const winner = gameWinner(pts[0], pts[1]);
   if (winner === null) {
-    return { ...state, points: pts, lastEvent: { type: "point", points: pts } };
+    const next = {
+      ...state,
+      points: pts,
+      lastEvent: { type: "point", points: pts },
+    };
+
+    return addEvent(next, {
+      type: "point",
+      team,
+    });
   }
   return processGameWin({ ...state, points: [0, 0] }, winner);
 }
@@ -144,15 +170,23 @@ function processGameWin(state, gWinner) {
 
   // Tiebreak trigger at 6-6
   if (games[0] === 6 && games[1] === 6 && state.format !== "games_only") {
-    return {
+    const next = {
       ...state,
       games,
       server: newServer,
       isTiebreak: true,
       tiebreakPoints: [0, 0],
       tbFirstServer: newServer,
-      lastEvent: { type: "tiebreak_start", games, server: newServer },
+      lastEvent: {
+        type: "tiebreak_start",
+        games,
+        server: newServer,
+      },
     };
+
+    return addEvent(next, {
+      type: "tiebreak_start",
+    });
   }
 
   // Set winner?
@@ -162,13 +196,23 @@ function processGameWin(state, gWinner) {
     return processSetWin({ ...state, games }, sw, games, newServer);
   }
 
-  return {
+  const next = {
     ...state,
     points: [0, 0],
     games,
     server: newServer,
-    lastEvent: { type: "game", winner: gWinner, games, server: newServer },
+    lastEvent: {
+      type: "game",
+      winner: gWinner,
+      games,
+      server: newServer,
+    },
   };
+
+  return addEvent(next, {
+    type: "game",
+    winner: gWinner,
+  });
 }
 
 function processSetWin(state, sw, games, newServer) {
@@ -178,7 +222,7 @@ function processSetWin(state, sw, games, newServer) {
   const neededSets = state.format === "best_of_3" ? 2 : 1;
 
   if (sets[sw] >= neededSets) {
-    return {
+    const next = {
       ...state,
       points: [0, 0],
       games: [0, 0],
@@ -188,9 +232,13 @@ function processSetWin(state, sw, games, newServer) {
       winner: sw,
       lastEvent: { type: "match", winner: sw, sets, completedSets },
     };
+    return addEvent(next, {
+      type: "match",
+      winner: sw,
+    });
   }
 
-  return {
+  const next = {
     ...state,
     points: [0, 0],
     games: [0, 0],
@@ -201,6 +249,10 @@ function processSetWin(state, sw, games, newServer) {
     isTiebreak: false,
     lastEvent: { type: "set", winner: sw, sets, games, server: newServer },
   };
+  return addEvent(next, {
+    type: "set",
+    winner: sw,
+  });
 }
 
 function processTiebreakPoint(state, team) {
@@ -211,7 +263,7 @@ function processTiebreakPoint(state, team) {
 
   const winner = tiebreakWinner(tb[0], tb[1]);
   if (winner === null) {
-    return {
+    const next = {
       ...state,
       tiebreakPoints: tb,
       server: newServer,
@@ -221,6 +273,11 @@ function processTiebreakPoint(state, team) {
         server: newServer,
       },
     };
+
+    return addEvent(next, {
+      type: "tiebreak_point",
+      team,
+    });
   }
 
   // Tiebreak won → set won, show as 7-6
@@ -242,14 +299,16 @@ export function getAnnouncement(event, names, language) {
   const [nA, nB, nAA, nBB] = names;
   const serverName = (s) => names[s];
   const teamA = `${names[0]} & ${names[2]}`;
-  const teamB = `${names[1]} & ${names[3]}`;   
+  const teamB = `${names[1]} & ${names[3]}`;
 
   switch (event.type) {
     case "point": {
       const [dA, dB] = getPointsDisplay(event.points[0], event.points[1]);
       if (dA === "40" && dB === "40") return pt ? "Iguais" : "Deuce";
-      if (dA === "ADV") return pt ? `Vantagem ${nA} & ${nAA}` : `Advantage ${nA} & ${nAA}`;
-      if (dB === "ADV") return pt ? `Vantagem ${nB} & ${nBB}` : `Advantage ${nB} & ${nBB}`;
+      if (dA === "ADV")
+        return pt ? `Vantagem ${nA} & ${nAA}` : `Advantage ${nA} & ${nAA}`;
+      if (dB === "ADV")
+        return pt ? `Vantagem ${nB} & ${nBB}` : `Advantage ${nB} & ${nBB}`;
       return pt ? `${dA} a ${dB}` : `${dA}, ${dB}`;
     }
     case "game": {
@@ -266,20 +325,22 @@ export function getAnnouncement(event, names, language) {
     case "tiebreak_point": {
       const [tbA, tbB] = event.tiebreakPoints;
       const srv = serverName(event.server);
-      return pt ? `${tbA} a ${tbB}. Serviço de ${srv}` : `${tbA} ${tbB}. ${srv} to serve`;
+      return pt
+        ? `${tbA} a ${tbB}. Serviço de ${srv}`
+        : `${tbA} ${tbB}. ${srv} to serve`;
     }
     case "set": {
       const [sA, sB] = event.sets;
       const [gA, gB] = event.games;
-      const srv = serverName(event.server);  
-      const winner = event.winner === 0 ? teamA : teamB; 
+      const srv = serverName(event.server);
+      const winner = event.winner === 0 ? teamA : teamB;
       return pt
         ? `Set para ${winner}! ${gA} a ${gB}. ${sA} sets a ${sB}. Serviço de ${srv}`
         : `Set to ${winner}! ${gA} ${gB}. ${sA} sets to ${sB}. ${srv} to serve`;
     }
     case "match": {
       const [sA, sB] = event.sets;
-      const winner = event.winner === 0 ? teamA : teamB; 
+      const winner = event.winner === 0 ? teamA : teamB;
       return pt
         ? `Jogo! ${winner} vence! ${sA} a ${sB}`
         : `Game! ${winner} wins! ${sA} to ${sB}`;
