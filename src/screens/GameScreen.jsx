@@ -13,6 +13,7 @@ import {
 import { useSpeech } from "../hooks/useSpeech";
 import { useKeyboard } from "../hooks/useKeyboard";
 import { saveMatch } from "../services/matchStorage";
+import { doesComment } from "../logic/comentator";
 
 export default function GameScreen({ initialState, onNewGame }) {
   const [state, setState] = useState(initialState);
@@ -20,6 +21,7 @@ export default function GameScreen({ initialState, onNewGame }) {
   const [showSettings, setShowSettings] = useState(false);
   const [tapKey, setTapKey] = useState(" ");
   const prevEvent = useRef(null);
+  const allowComment = false;
 
   const pt = state.language === "pt";
   const players = [
@@ -38,7 +40,14 @@ export default function GameScreen({ initialState, onNewGame }) {
       getPlayers(state),
       state.language,
     );
-    if (text) speak(text, state.language);
+    const comment = doesComment(state, state.lastEvent)
+    if (text) {
+      setTimeout(() => speak(text, state.language), 200);
+    }
+
+    if (comment && allowComment) {
+      setTimeout(() => speak(comment, state.language), 3000);
+    }
   }, [state.lastEvent, players, state.language, speak]);
 
   // Announce who serves on mount
@@ -57,6 +66,23 @@ export default function GameScreen({ initialState, onNewGame }) {
       saveMatch(state);
     }
   }, [state.phase]);
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      console.log("KEY DOWN", e.key);
+    }
+    function onKeyUp(e) {
+    console.log("KEY UP:", e.key);
+  }
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+
+    return () => {
+    window.removeEventListener("keydown", onKeyDown);
+    window.removeEventListener("keyup", onKeyUp);
+  };
+  }, []);
 
   const doAddPoint = useCallback((team) => {
     setState((s) => addPoint(s, team));
