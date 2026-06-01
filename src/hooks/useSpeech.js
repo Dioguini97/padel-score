@@ -1,46 +1,78 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from "react";
 
 export function useSpeech() {
   const [voiceEnabled, setVoiceEnabledState] = useState(true);
   const enabledRef = useRef(true);
 
+  const queue = useRef([]);
+  const speaking = useRef(false);
+
   const setVoiceEnabled = useCallback((val) => {
     enabledRef.current = val;
     setVoiceEnabledState(val);
-    if (!val) window.speechSynthesis?.cancel();
+
+    if (!val) {
+      window.speechSynthesis?.cancel();
+      queue.current = [];
+      speaking.current = false;
+    }
   }, []);
 
-  const speak = useCallback(async (text, language = 'pt') => {
-    if (!enabledRef.current || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
+  const speakNext = useCallback(() => {
+    if (!queue.current.length) {
+      speaking.current = false;
+      return;
+    }
+
+    speaking.current = true;
+
+    const { text, lang } = queue.current.shift();
+
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = language === 'pt' ? 'pt-PT' : 'en-US';
+    u.lang = lang;
 
-    const getVoicesAsync = () =>
-  new Promise((resolve) => {
-    let voices = window.speechSynthesis.getVoices();
-    if (voices.length) return resolve(voices);
+    const voices = window.speechSynthesis.getVoices?.() || [];
 
-    window.speechSynthesis.onvoiceschanged = () => {
-      voices = window.speechSynthesis.getVoices();
-      resolve(voices);
-    };
-  });
-
-    const voices = await getVoicesAsync();
-
-    const preferred = 
-      voices.find(v => v.lang === u.lang && v.name.includes('Google')) ||
-      voices.find(v => v.lang === u.lang) ||
+    const preferred =
+      voices.find(
+        (v) =>
+          v.lang === lang &&
+          (v.name.toLowerCase().includes("google") ||
+            v.name.toLowerCase().includes("microsoft") ||
+            v.name.toLowerCase().includes("natural"))
+      ) ||
+      voices.find((v) => v.lang === lang && v.localService) ||
+      voices.find((v) => v.lang === lang) ||
       voices[0];
 
     if (preferred) u.voice = preferred;
 
-    u.rate = 0.95;
-    u.pitch = 0.9;
-    u.volume = 0.8;
+    // 🎧 tuning para menos robotico
+    u.rate = 0.88;
+    u.pitch = 0.8;
+    u.volume = 0.95;
+
+    u.onend = speakNext;
+    u.onerror = speakNext;
+
     window.speechSynthesis.speak(u);
   }, []);
 
-  return { speak, voiceEnabled, setVoiceEnabled };
+  const speak = useCallback((text, language = "pt") => {
+    if (!enabledRef.current || !window.speechSynthesis) return;
+
+    const lang = language === "pt" ? "pt-PT" : "en-US";
+
+    queue.current.push({ text, lang });
+
+    if (!speaking.current) {
+      speakNext();
+    }
+  }, [speakNext]);
+
+  return {
+    speak,
+    voiceEnabled,
+    setVoiceEnabled,
+  };
 }
