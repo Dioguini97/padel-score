@@ -47,20 +47,21 @@ function tiebreakServer(firstServer, totalPoints) {
   const blockIndex = Math.floor((totalPoints + 1) / 2);
 
   return (firstServer + blockIndex) % 4;
-  //const sequence = [0, 1, 2, 3];
-  //const startIndex = sequence.indexOf(server);
-  //return sequence[(startIndex + totalPoints) % 4];
-  //const block = Math.floor((totalPoints + 1) / 2);
-  //return block % 2 === 0 ? firstServer : 1 - firstServer;
 }
 
 // ─── State factory ────────────────────────────────────────────────────────────
+const uuid = () =>
+  globalThis.crypto?.randomUUID?.() ?? cryptoFallback();
+
+function cryptoFallback() {
+  return Math.random().toString(36).substring(2);
+}
 
 export function createInitialState({ teamA, teamB, format, language, server }) {
   return {
     teamA,
     teamB,
-    matchId: crypto.randomUUID(),
+    matchId: uuid,
     startedAt: Date.now(),
     events: [],
     names: [
@@ -247,6 +248,7 @@ function processSetWin(state, sw, games, newServer) {
     server: newServer,
     firstServerOfSet: newServer,
     isTiebreak: false,
+    tbFirstServer: newServer,
     lastEvent: { type: "set", winner: sw, sets, games, server: newServer },
   };
   return addEvent(next, {
@@ -259,7 +261,7 @@ function processTiebreakPoint(state, team) {
   const tb = [...state.tiebreakPoints];
   tb[team]++;
   const total = tb[0] + tb[1];
-  const newServer = tiebreakServer(state.tbFirstServer, total);
+  const newServer =  tiebreakServer(state.tbFirstServer, total);
 
   const winner = tiebreakWinner(tb[0], tb[1]);
   if (winner === null) {
@@ -282,12 +284,13 @@ function processTiebreakPoint(state, team) {
 
   // Tiebreak won → set won, show as 7-6
   const finalGames = winner === 0 ? [7, 6] : [6, 7];
-  const afterServer = 1 - state.tbFirstServer;
+  const newFirstServerOfSet = nextServer(state.firstServerOfSet);
+  console.log(newFirstServerOfSet)
   return processSetWin(
     { ...state, isTiebreak: false, tiebreakPoints: tb },
     winner,
     finalGames,
-    afterServer,
+    newFirstServerOfSet
   );
 }
 
@@ -309,7 +312,7 @@ export function getAnnouncement(event, names, language) {
         return pt ? `Vantagem ${nA} & ${nAA}` : `Advantage ${nA} & ${nAA}`;
       if (dB === "ADV")
         return pt ? `Vantagem ${nB} & ${nBB}` : `Advantage ${nB} & ${nBB}`;
-      return pt ? `${dA} a ${dB}` : `${dA}, ${dB}`;
+      return pt ? `${dA === '0' ? 'Nada' : dA}, ${dB === '0' ? 'Nada' : dB}` : `${dA === '0' ? 'Love' : dA}, ${dB === '0' ? 'Love' : dB}`;
     }
     case "game": {
       const [gA, gB] = event.games;
