@@ -307,12 +307,12 @@ export function getAnnouncement(event, names, language) {
   switch (event.type) {
     case "point": {
       const [dA, dB] = getPointsDisplay(event.points[0], event.points[1]);
-      if (dA === "40" && dB === "40") return pt ? "Iguais" : "Deuce";
+      if (dA === "40" && dB === "40") return pt ? "Ponto - Iguais" : "Point - Deuce";
       if (dA === "ADV")
-        return pt ? `Vantagem ${nA} & ${nAA}` : `Advantage ${nA} & ${nAA}`;
+        return pt ? `Ponto - Vantagem ${nA} & ${nAA}` : `Point - Advantage ${nA} & ${nAA}`;
       if (dB === "ADV")
-        return pt ? `Vantagem ${nB} & ${nBB}` : `Advantage ${nB} & ${nBB}`;
-      return pt ? `${dA === '0' ? 'Nada' : dA}, ${dB === '0' ? 'Nada' : dB}` : `${dA === '0' ? 'Love' : dA}, ${dB === '0' ? 'Love' : dB}`;
+        return pt ? `Ponto - Vantagem ${nB} & ${nBB}` : `Point - Advantage ${nB} & ${nBB}`;
+      return pt ? `Ponto - ${dA === '0' ? 'Nada' : dA}, ${dB === '0' ? 'Nada' : dB}` : `Point - ${dA === '0' ? 'Love' : dA}, ${dB === '0' ? 'Love' : dB}`;
     }
     case "game": {
       const [gA, gB] = event.games;
@@ -329,8 +329,8 @@ export function getAnnouncement(event, names, language) {
       const [tbA, tbB] = event.tiebreakPoints;
       const srv = serverName(event.server);
       return pt
-        ? `${tbA} a ${tbB}. Serviço de ${srv}`
-        : `${tbA} ${tbB}. ${srv} to serve`;
+        ? `Ponto - ${tbA} a ${tbB}. Serviço de ${srv}`
+        : `Point - ${tbA} ${tbB}. ${srv} to serve`;
     }
     case "set": {
       const [sA, sB] = event.sets;
@@ -338,15 +338,15 @@ export function getAnnouncement(event, names, language) {
       const srv = serverName(event.server);
       const winner = event.winner === 0 ? teamA : teamB;
       return pt
-        ? `Set para ${winner}! ${gA} a ${gB}. ${sA} sets a ${sB}. Serviço de ${srv}`
-        : `Set to ${winner}! ${gA} ${gB}. ${sA} sets to ${sB}. ${srv} to serve`;
+        ? `Fechou - Set para ${winner}! ${gA} a ${gB}. ${sA} sets a ${sB}. Serviço de ${srv}`
+        : `Closed - Set to ${winner}! ${gA} ${gB}. ${sA} sets to ${sB}. ${srv} to serve`;
     }
     case "match": {
       const [sA, sB] = event.sets;
       const winner = event.winner === 0 ? teamA : teamB;
       return pt
-        ? `Jogo! ${winner} vence! ${sA} a ${sB}`
-        : `Game! ${winner} wins! ${sA} to ${sB}`;
+        ? `Partida! ${winner} vence! ${sA} a ${sB}`
+        : `Match! ${winner} wins! ${sA} to ${sB}`;
     }
     default:
       return null;

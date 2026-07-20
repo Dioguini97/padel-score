@@ -40,7 +40,7 @@ export default function GameScreen({ initialState, onNewGame }) {
       getPlayers(state),
       state.language,
     );
-    const comment = doesComment(state, state.lastEvent)
+    const comment = doesComment(state, state.lastEvent);
     if (text) {
       setTimeout(() => speak(text, state.language), 200);
     }
@@ -72,16 +72,16 @@ export default function GameScreen({ initialState, onNewGame }) {
       console.log("KEY DOWN", e.key);
     }
     function onKeyUp(e) {
-    console.log("KEY UP:", e.key);
-  }
+      console.log("KEY UP:", e.key);
+    }
 
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
 
     return () => {
-    window.removeEventListener("keydown", onKeyDown);
-    window.removeEventListener("keyup", onKeyUp);
-  };
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
   }, []);
 
   const doAddPoint = useCallback((team) => {
